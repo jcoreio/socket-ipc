@@ -1,0 +1,23 @@
+{
+  "name": "socket-ipc",
+  "version": "1.0.0",
+  "description": "Message-based communications over UNIX sockets",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcoreio/socket-ipc.git"
+  },
+  "keywords": [
+    "sockets",
+    "IPC"
+  ],
+  "author": "Jason McLaurin",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/jcoreio/socket-ipc/issues"
+  },
+  "homepage": "https://github.com/jcoreio/socket-ipc#readme"
+}
