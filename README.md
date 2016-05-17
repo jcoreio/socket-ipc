@@ -1,6 +1,6 @@
-# socket-ipc
+# Socket IPC
 
-WebSocket-like communications over local UNIX sockets.
+WebSocket-like communications over local UNIX sockets
 
 ## Installation
 
