@@ -1,0 +1,5 @@
+**
+!src/**/*.js
+!index.js
+!README.md
+
