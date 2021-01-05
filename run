@@ -1,0 +1,15 @@
+#!/usr/bin/env node
+
+'use strict'
+
+var semver = require('semver')
+
+var requiredNodeVersion = require('./package.json').engines.node
+var nodeVersion = process.version.substring(1)
+if (!semver.satisfies(nodeVersion, requiredNodeVersion)) {
+  console.error('Error: you must use node ' + requiredNodeVersion + ' (your version: ' + nodeVersion + ')') // eslint-disable-line no-console
+  process.exit(1)
+}
+
+require('ts-node').register()
+require('./run.ts')

@@ -1,23 +1,142 @@
 {
   "name": "socket-ipc",
-  "version": "1.0.2",
+  "version": "0.0.0-development",
   "description": "Message-based communications over UNIX sockets",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "engines": {
+    "node": ">=8.0.0"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublishOnly": "./run check build",
+    "semantic-release": "semantic-release"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged && ./run check",
+      "commit-msg": "commitlint -e $GIT_PARAMS",
+      "pre-push": "npm test"
+    }
+  },
+  "lint-staged": {
+    "*.{js,json,css,md}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@jcoreio/commitlint-config"
+    ]
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "config": {
+    "mocha": "-r @babel/register test/configure.js test/**/*.js",
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "nyc": {
+    "extension": [
+      ".ts"
+    ],
+    "include": [
+      "src/**/*.ts"
+    ],
+    "require": [
+      "@babel/register"
+    ],
+    "sourceMap": false,
+    "instrument": false
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jcoreio/socket-ipc.git"
+    "url": "https://github.com/jcoreio/socket-ipc.git"
   },
   "keywords": [
-    "sockets",
-    "IPC"
+    "UNIX",
+    "sockets"
   ],
   "author": "Jason McLaurin",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/jcoreio/socket-ipc/issues"
   },
-  "homepage": "https://github.com/jcoreio/socket-ipc#readme"
+  "homepage": "https://github.com/jcoreio/socket-ipc#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.7.0",
+    "@babel/core": "^7.7.0",
+    "@babel/plugin-proposal-class-properties": "^7.7.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.6.2",
+    "@babel/plugin-transform-runtime": "^7.6.2",
+    "@babel/preset-env": "^7.7.1",
+    "@babel/preset-typescript": "^7.7.0",
+    "@babel/register": "^7.7.0",
+    "@babel/runtime": "^7.7.1",
+    "@commitlint/cli": "^8.2.0",
+    "@jcoreio/commitlint-config": "^1.1.1",
+    "@types/chai": "^4.2.6",
+    "@types/fs-extra": "^8.0.1",
+    "@types/lodash": "^4.14.167",
+    "@types/mocha": "^5.2.7",
+    "@types/touch": "^3.1.1",
+    "@types/verror": "^1.10.4",
+    "@typescript-eslint/eslint-plugin": "^2.7.0",
+    "@typescript-eslint/parser": "^2.7.0",
+    "babel-plugin-istanbul": "^5.1.0",
+    "chai": "^4.2.0",
+    "chalk": "^2.4.2",
+    "codecov": "^3.1.0",
+    "copy": "^0.3.2",
+    "cross-env": "^5.2.0",
+    "defaultenv": "^4.0.0",
+    "eslint": "^5.9.0",
+    "eslint-config-prettier": "^6.5.0",
+    "eslint-plugin-prettier": "^3.1.1",
+    "eslint-watch": "^4.0.2",
+    "fs-extra": "^8.1.0",
+    "husky": "^1.1.4",
+    "istanbul": "^0.4.5",
+    "lint-staged": "^8.0.4",
+    "lodash": "^4.17.20",
+    "mocha": "^6.0.0",
+    "nyc": "^13.1.0",
+    "p-timeout": "^4.1.0",
+    "prettier": "^1.15.2",
+    "prettier-eslint": "^8.8.2",
+    "promake": "^3.1.2",
+    "promisify-child-process": "^3.1.1",
+    "rimraf": "^2.6.0",
+    "semantic-release": "^15.1.4",
+    "semver": "^6.3.0",
+    "touch": "^3.1.0",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "strict-event-emitter-types": "^2.0.0",
+    "verror": "^1.10.0"
+  },
+  "renovate": {
+    "extends": [
+      ":separateMajorReleases",
+      ":combinePatchMinorReleases",
+      ":ignoreUnstable",
+      ":prImmediately",
+      ":renovatePrefix",
+      ":updateNotScheduled",
+      ":preserveSemverRanges",
+      ":semanticPrefixFixDepsChoreOthers",
+      ":automergeDisabled",
+      "group:monorepos"
+    ],
+    "automerge": true,
+    "major": {
+      "automerge": false
+    }
+  }
 }

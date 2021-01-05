@@ -1,5 +1,10 @@
 **
-!src/**/*.js
-!index.js
-!README.md
-
+!/lib/**/*.js
+!/lib/**/*.js.flow
+!/lib/**/*.d.ts
+!/*.md
+/src
+/test
+/coverage
+__tests__
+/.*
