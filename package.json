@@ -113,12 +113,12 @@
     "rimraf": "^2.6.0",
     "semantic-release": "^15.1.4",
     "semver": "^6.3.0",
+    "strict-event-emitter-types": "^2.0.0",
     "touch": "^3.1.0",
     "ts-node": "^8.6.2",
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "strict-event-emitter-types": "^2.0.0",
     "verror": "^1.10.0"
   },
   "renovate": {
