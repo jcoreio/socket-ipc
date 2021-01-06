@@ -61,6 +61,31 @@ describe('socket-ipc', () => {
     return client
   }
 
+  it('resolves waitForConnection after connecting', async function() {
+    const server = getServer()
+    const client = getClient()
+
+    expect(client.isConnected()).to.be.false
+    server.start()
+    client.start()
+    await client.waitForConnection()
+    expect(client.isConnected()).to.be.true
+  })
+
+  it('rejects waitForConnection after stopping client', async function() {
+    const server = getServer()
+    const client = getClient()
+
+    expect(client.isConnected()).to.be.false
+    server.start()
+    client.start()
+    await client.waitForConnection()
+    client.stop()
+    await expect(client.waitForConnection()).to.be.rejectedWith(
+      'client is stopped'
+    )
+  })
+
   it('sends string messages from client to server', async function() {
     const server = getServer()
     const client = getClient()
