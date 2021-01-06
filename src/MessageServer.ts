@@ -1,6 +1,8 @@
 import fs from 'fs'
 import net from 'net'
+import { promisify } from 'util'
 
+import pTimeout from 'p-timeout'
 import { VError } from 'verror'
 
 import MessageConnection from './MessageConnection'
@@ -16,6 +18,7 @@ export default class MessageServer extends MessageHandlerCommon {
   private readonly path: string
   private readonly connections: Set<MessageConnection> = new Set()
   private server: net.Server | undefined
+  private listening = false
 
   constructor(path: string, options: MessageServerOptions = {}) {
     super()
@@ -25,7 +28,7 @@ export default class MessageServer extends MessageHandlerCommon {
     this.path = path
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (!this.running) {
       this.running = true
       try {
@@ -40,13 +43,18 @@ export default class MessageServer extends MessageHandlerCommon {
       server.on('error', (err: Error) =>
         this.onError(new VError(err, 'MessageServer got error from socket'))
       )
-      server.listen(this.path)
+      await pTimeout(
+        promisify((cb: () => void) => server.listen({ path: this.path }, cb))(),
+        2000
+      )
+      this.listening = true
     }
   }
 
   stop(): void {
     if (this.running) {
       this.running = false
+      this.listening = false
       if (this.server) this.server.close()
       this.server = undefined
       this.connections.forEach((connection: MessageConnection) =>
@@ -58,6 +66,10 @@ export default class MessageServer extends MessageHandlerCommon {
 
   isConnected(): boolean {
     return this.connections.size > 0
+  }
+
+  isListening(): boolean {
+    return this.listening
   }
 
   send(message: Buffer | string): void {

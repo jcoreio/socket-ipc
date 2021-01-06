@@ -17,16 +17,6 @@ import {
 const TEST_SOCKET_PATH = '/tmp/socket-ipc-test'
 const WAIT_TIMEOUT = 200
 
-const waitForConnect = (
-  handler: MessageHandlerCommon
-): Promise<MessageConnection> =>
-  pTimeout(
-    new Promise((resolve: (connection: MessageConnection) => void) => {
-      handler.on('connection', resolve)
-    }),
-    WAIT_TIMEOUT
-  )
-
 const waitForMessage = (handler: MessageHandlerCommon): Promise<MessageEvent> =>
   pTimeout(
     new Promise((resolve: (event: MessageEvent) => void) => {
@@ -66,9 +56,8 @@ describe('socket-ipc', () => {
     const client = getClient()
 
     expect(client.isConnected()).to.be.false
-    server.start()
-    client.start()
-    await client.waitForConnection()
+    await server.start()
+    await client.start()
     expect(client.isConnected()).to.be.true
   })
 
@@ -77,23 +66,28 @@ describe('socket-ipc', () => {
     const client = getClient()
 
     expect(client.isConnected()).to.be.false
-    server.start()
-    client.start()
-    await client.waitForConnection()
+    await server.start()
+    await client.start()
     client.stop()
     await expect(client.waitForConnection()).to.be.rejectedWith(
       'client is stopped'
     )
   })
 
+  it('is listening to server socket when server.start() resolves', async function() {
+    const server = getServer()
+
+    expect(server.isListening()).to.be.false
+    await server.start()
+    expect(server.isListening()).to.be.true
+  })
+
   it('sends string messages from client to server', async function() {
     const server = getServer()
     const client = getClient()
 
-    const connectPromise = waitForConnect(client)
-    server.start()
-    client.start()
-    await connectPromise
+    await server.start()
+    await client.start()
 
     const messagePromise = waitForMessage(server)
     client.send(TEST_STRING)
@@ -107,10 +101,8 @@ describe('socket-ipc', () => {
     const server = getServer()
     const client = getClient()
 
-    const connectPromise = waitForConnect(server)
-    server.start()
-    client.start()
-    await connectPromise
+    await server.start()
+    await client.start()
 
     const messagePromise = waitForMessage(client)
     server.send(TEST_STRING)
@@ -124,10 +116,8 @@ describe('socket-ipc', () => {
     const server = getServer({ binary: true })
     const client = getClient({ binary: true })
 
-    const connectPromise = waitForConnect(client)
-    server.start()
-    client.start()
-    await connectPromise
+    await server.start()
+    await client.start()
 
     const messagePromise = waitForMessage(server)
     client.send(TEST_BUFFER)
@@ -141,10 +131,8 @@ describe('socket-ipc', () => {
     const server = getServer({ binary: true })
     const client = getClient({ binary: true })
 
-    const connectPromise = waitForConnect(server)
-    server.start()
-    client.start()
-    await connectPromise
+    await server.start()
+    await client.start()
 
     const messagePromise = waitForMessage(client)
     server.send(TEST_BUFFER)
@@ -159,10 +147,8 @@ describe('socket-ipc', () => {
     const CLIENT_IDS = range(2)
     const clients = CLIENT_IDS.map(() => getClient())
 
-    const connectPromises = clients.map(waitForConnect)
-    server.start()
-    for (const client of clients) client.start()
-    await Promise.all(connectPromises)
+    await server.start()
+    await Promise.all(clients.map((client: MessageClient) => client.start()))
 
     const getRequest = (clientId: number, messageId: number): string =>
       `client ${clientId} request ${messageId}`
@@ -214,10 +200,8 @@ describe('socket-ipc', () => {
     const server = getServer({ binary: true })
     const client = getClient()
 
-    const connectPromise = waitForConnect(client)
-    server.start()
-    client.start()
-    await connectPromise
+    await server.start()
+    await client.start()
 
     const messagePromise = waitForMessage(server)
     client.send(TEST_STRING)
@@ -231,10 +215,8 @@ describe('socket-ipc', () => {
     const server = getServer()
     const client = getClient({ binary: true })
 
-    const connectPromise = waitForConnect(client)
-    server.start()
-    client.start()
-    await connectPromise
+    await server.start()
+    await client.start()
 
     const messagePromise = waitForMessage(server)
     client.send(TEST_BUFFER)

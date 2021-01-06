@@ -9,6 +9,7 @@ const RECONNECT_WAIT = 1000 // 1 second
 
 import net from 'net'
 
+import pTimeout from 'p-timeout'
 import { VError } from 'verror'
 
 import MessageConnection from './MessageConnection'
@@ -44,12 +45,13 @@ export default class MessageClient extends MessageHandlerCommon {
     this.initWaitForConnectionPromise()
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (!this.running) {
       this.running = true
       if (!this.waitForConnectionPromise) this.initWaitForConnectionPromise()
       this.connect()
     }
+    await this.waitForConnection()
   }
 
   stop(): void {
@@ -72,11 +74,14 @@ export default class MessageClient extends MessageHandlerCommon {
   }
 
   private initWaitForConnectionPromise(): void {
-    this.waitForConnectionPromise = new Promise(
-      (resolve: ResolveConnectCallback, reject: RejectConnectCallback) => {
-        this.waitForConnectionResolve = resolve
-        this.waitForConnectionReject = reject
-      }
+    this.waitForConnectionPromise = pTimeout(
+      new Promise(
+        (resolve: ResolveConnectCallback, reject: RejectConnectCallback) => {
+          this.waitForConnectionResolve = resolve
+          this.waitForConnectionReject = reject
+        }
+      ),
+      10000
     )
   }
 
