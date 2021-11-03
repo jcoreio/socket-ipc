@@ -13,7 +13,7 @@ $ npm install socket-ipc
 ```js
 var ipc = require('socket-ipc')
 
-var server = new ipc.MessageServer('/tmp/socket-loc')
+var server = new ipc.MessageServer({ path: '/tmp/socket-loc' })
 
 server.on('message', function(message) {
   console.log('got message:', message.data)
@@ -32,7 +32,7 @@ server.start()
 ```js
 var ipc = require('socket-ipc')
 
-var client = new ipc.MessageClient('/tmp/socket-loc')
+var client = new ipc.MessageClient({ path: '/tmp/socket-loc' })
 
 client.on('connection', function(connection) {
   console.log('connected. sending greetings...')
