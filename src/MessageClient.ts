@@ -3,11 +3,15 @@
  that aren't transpiled from ES6 to ES5.
  */
 
-import { MessageEvent, MessageHandlerOptions } from './types'
+import {
+  MessageEvent,
+  MessageHandlerOptions,
+  validateMessageHandlerOptions,
+} from './types'
 
 const RECONNECT_WAIT = 1000 // 1 second
 
-import net from 'net'
+import net, { NetConnectOpts } from 'net'
 
 import pTimeout from 'p-timeout'
 import { VError } from 'verror'
@@ -19,13 +23,13 @@ type ResolveConnectCallback = () => void
 type RejectConnectCallback = (err: Error) => void
 
 export type MessageClientOptions = MessageHandlerOptions & {
+  host?: string
   oneShot?: boolean
 }
 
 export default class MessageClient extends MessageHandlerCommon {
-  private readonly path: string
+  private readonly options: MessageClientOptions
   private readonly binary: boolean
-  private readonly oneShot: boolean
 
   private connection: MessageConnection | undefined
   private reconnectTimeout: ReturnType<typeof setTimeout> | undefined
@@ -35,13 +39,11 @@ export default class MessageClient extends MessageHandlerCommon {
   private waitForConnectionResolve: ResolveConnectCallback | undefined
   private waitForConnectionReject: RejectConnectCallback | undefined
 
-  constructor(path: string, options: MessageClientOptions = {}) {
+  constructor(options: MessageClientOptions = {}) {
     super()
-    if (typeof path !== 'string' || !path.length)
-      throw Error('path must be a non-empty string')
-    this.path = path
+    validateMessageHandlerOptions(options)
+    this.options = options
     this.binary = Boolean(options.binary)
-    this.oneShot = Boolean(options.oneShot)
     this.initWaitForConnectionPromise()
   }
 
@@ -103,8 +105,11 @@ export default class MessageClient extends MessageHandlerCommon {
           }
           this.cleanUp('error while attempting to connect')
         }
-
-        const socket = (this.socket = net.connect({ path: this.path }, () => {
+        const { path, host, port } = this.options
+        const connectOptions: NetConnectOpts = (path
+          ? { path }
+          : { host, port }) as NetConnectOpts
+        const socket = (this.socket = net.connect(connectOptions, () => {
           if (this.running) {
             socket.removeListener('error', onConnectError)
             const connection = (this.connection = new MessageConnection(
@@ -156,7 +161,7 @@ export default class MessageClient extends MessageHandlerCommon {
     }
     this.waitForConnectionPromise = undefined
 
-    if (this.running && !this.reconnectTimeout && !this.oneShot) {
+    if (this.running && !this.reconnectTimeout && !this.options.oneShot) {
       // schedule reconnect
       const timeout = (this.reconnectTimeout = setTimeout(() => {
         if (timeout === this.reconnectTimeout) {

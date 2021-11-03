@@ -7,36 +7,38 @@ import { VError } from 'verror'
 
 import MessageConnection from './MessageConnection'
 import MessageHandlerCommon from './MessageHandlerCommon'
-import { MessageEvent } from './types'
-
-export type MessageServerOptions = {
-  binary?: boolean
-}
+import {
+  MessageEvent,
+  MessageHandlerOptions,
+  validateMessageHandlerOptions,
+} from './types'
 
 export default class MessageServer extends MessageHandlerCommon {
+  private readonly options: MessageHandlerOptions
   private readonly binary: boolean
-  private readonly path: string
   private readonly connections: Set<MessageConnection> = new Set()
   private server: net.Server | undefined
   private listening = false
 
-  constructor(path: string, options: MessageServerOptions = {}) {
+  constructor(options: MessageHandlerOptions = {}) {
     super()
-    if (typeof path !== 'string' || !path.length)
-      throw Error('path must be a non-empty string')
+    validateMessageHandlerOptions(options)
+    this.options = options
     this.binary = Boolean(options.binary)
-    this.path = path
   }
 
   async start(): Promise<void> {
     if (!this.running) {
       this.running = true
-      try {
-        // Delete the socket if it exists
-        fs.unlinkSync(this.path)
-      } catch (err) {
-        // Swallow 'ENOENT' error, which is thrown if the socket does not exist
-        if (err && 'ENOENT' !== err.code) throw err
+      const { path, port } = this.options
+      if (path) {
+        try {
+          // Delete the socket if it exists
+          fs.unlinkSync(path)
+        } catch (err) {
+          // Swallow 'ENOENT' error, which is thrown if the socket does not exist
+          if (err && 'ENOENT' !== err.code) throw err
+        }
       }
       const server = (this.server = net.createServer())
       server.on('connection', this.onServerConnection)
@@ -44,7 +46,9 @@ export default class MessageServer extends MessageHandlerCommon {
         this.onError(new VError(err, 'MessageServer got error from socket'))
       )
       await pTimeout(
-        promisify((cb: () => void) => server.listen({ path: this.path }, cb))(),
+        promisify((cb: () => void) =>
+          server.listen(path ? { path } : { port }, cb)
+        )(),
         2000
       )
       this.listening = true
