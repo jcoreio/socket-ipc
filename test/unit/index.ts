@@ -4,12 +4,12 @@ import { expect } from 'chai'
 import fs from 'fs'
 import { range } from 'lodash'
 import pTimeout from 'p-timeout'
+import pEvent from 'p-event'
 
 import {
   MessageClient,
   MessageConnection,
   MessageEvent,
-  MessageHandlerCommon,
   MessageHandlerOptions,
   MessageServer,
 } from '../../src'
@@ -17,13 +17,9 @@ import {
 const TEST_SOCKET_PATH = '/tmp/socket-ipc-test'
 const WAIT_TIMEOUT = 200
 
-const waitForMessage = (handler: MessageHandlerCommon): Promise<MessageEvent> =>
-  pTimeout(
-    new Promise((resolve: (event: MessageEvent) => void) => {
-      handler.on('message', resolve)
-    }),
-    WAIT_TIMEOUT
-  )
+const waitForMessage = (
+  handler: MessageServer | MessageClient
+): Promise<MessageEvent> => pTimeout(pEvent(handler, 'message'), WAIT_TIMEOUT)
 
 const pause = (): Promise<void> =>
   new Promise((resolve: () => void) => {
@@ -34,7 +30,7 @@ const TEST_STRING = 'a test string message'
 const TEST_BUFFER = Buffer.from('a test binary message')
 
 describe('socket-ipc', () => {
-  let messageHandlers: Array<MessageHandlerCommon> = []
+  let messageHandlers: Array<MessageServer | MessageClient> = []
 
   afterEach(() => {
     for (const messageHandler of messageHandlers) {

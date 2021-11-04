@@ -5,12 +5,7 @@ import StrictEventEmitter from 'strict-event-emitter-types'
 import { VError } from 'verror'
 
 import MessageCodec from './MessageCodec'
-import {
-  MessageEvent,
-  OnErrorCallback,
-  OnMessageCallback,
-  OnCloseCallback,
-} from './types'
+import { MessageEvent } from './types'
 
 export type MessageConnectionOptions = {
   binary?: boolean
@@ -32,10 +27,6 @@ export default class MessageConnection extends (EventEmitter as {
 }) {
   private socket: net.Socket | undefined
   private readonly messageCodec: MessageCodec
-
-  public onmessage: OnMessageCallback | undefined
-  public onclose: OnCloseCallback | undefined
-  public onerror: OnErrorCallback | undefined
 
   constructor(socket: net.Socket, options: MessageConnectionOptions) {
     super()
@@ -64,7 +55,6 @@ export default class MessageConnection extends (EventEmitter as {
     try {
       this.messageCodec.decode(data, (message: Buffer | string) => {
         const event: MessageEvent = { data: message }
-        if (this.onmessage) this.onmessage(event)
         this.emit('message', event)
       })
     } catch (err) {
@@ -83,14 +73,12 @@ export default class MessageConnection extends (EventEmitter as {
     if (this.socket) {
       this.socket.destroy()
       this.socket = undefined
-      if (this.onclose) this.onclose()
       this.emit('close')
     }
   }
 
   private onError(err: Error): void {
-    if (this.onerror) this.onerror(err)
-    else this.emit('error', err)
+    this.emit('error', err)
     this.close()
   }
 }

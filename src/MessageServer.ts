@@ -1,19 +1,35 @@
 import fs from 'fs'
 import net from 'net'
 import { promisify } from 'util'
+import EventEmitter from 'events'
+import { StrictEventEmitter } from 'strict-event-emitter-types'
 
 import pTimeout from 'p-timeout'
 import { VError } from 'verror'
 
 import MessageConnection from './MessageConnection'
-import MessageHandlerCommon from './MessageHandlerCommon'
 import {
   MessageEvent,
   MessageHandlerOptions,
   validateMessageHandlerOptions,
 } from './types'
 
-export default class MessageServer extends MessageHandlerCommon {
+export interface MessageServerEvents {
+  connection: MessageConnection
+  message: (event: MessageEvent, connection: MessageConnection) => void
+  close: MessageConnection
+  error: Error
+}
+
+type MessageServerEmitter = StrictEventEmitter<
+  EventEmitter,
+  MessageServerEvents
+>
+
+export default class MessageServer extends (EventEmitter as {
+  new (): MessageServerEmitter
+}) {
+  private running = false
   private readonly options: MessageHandlerOptions
   private readonly binary: boolean
   private readonly connections: Set<MessageConnection> = new Set()
@@ -43,7 +59,10 @@ export default class MessageServer extends MessageHandlerCommon {
       const server = (this.server = net.createServer())
       server.on('connection', this.onServerConnection)
       server.on('error', (err: Error) =>
-        this.onError(new VError(err, 'MessageServer got error from socket'))
+        this.emit(
+          'error',
+          new VError(err, 'MessageServer got error from socket')
+        )
       )
       await pTimeout(
         promisify((cb: () => void) =>
@@ -86,16 +105,17 @@ export default class MessageServer extends MessageHandlerCommon {
     if (this.running) {
       const connection = new MessageConnection(socket, { binary: this.binary })
       connection.on('message', (event: MessageEvent) =>
-        this.onMessage(event, connection)
+        this.emit('message', event, connection)
       )
       connection.on('error', (err: Error) =>
-        this.onError(
+        this.emit(
+          'error',
           new VError(err, 'MessageServer got error from MessageConnection')
         )
       )
       connection.on('close', () => {
         this.connections.delete(connection)
-        this.onClose(connection)
+        this.emit('close', connection)
       })
       this.connections.add(connection)
       this.emit('connection', connection)

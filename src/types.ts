@@ -14,7 +14,3 @@ export function validateMessageHandlerOptions({
 }: MessageHandlerOptions): void {
   if (!path && !port) throw Error('either path or port must be provided')
 }
-
-export type OnErrorCallback = (err: Error) => void
-export type OnMessageCallback = (event: MessageEvent) => void
-export type OnCloseCallback = () => void

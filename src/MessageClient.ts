@@ -8,26 +8,40 @@ import {
   MessageHandlerOptions,
   validateMessageHandlerOptions,
 } from './types'
+import EventEmitter from 'events'
+import { StrictEventEmitter } from 'strict-event-emitter-types'
 
 const RECONNECT_WAIT = 1000 // 1 second
 
 import net, { NetConnectOpts } from 'net'
 
 import pTimeout from 'p-timeout'
+import emitted from 'p-event'
 import { VError } from 'verror'
 
 import MessageConnection from './MessageConnection'
-import MessageHandlerCommon from './MessageHandlerCommon'
-
-type ResolveConnectCallback = () => void
-type RejectConnectCallback = (err: Error) => void
 
 export type MessageClientOptions = MessageHandlerOptions & {
   host?: string
   oneShot?: boolean
 }
 
-export default class MessageClient extends MessageHandlerCommon {
+export interface MessageClientEvents {
+  connection: MessageConnection
+  message: (event: MessageEvent, connection: MessageConnection) => void
+  close: MessageConnection
+  error: Error
+}
+
+type MessageClientEmitter = StrictEventEmitter<
+  EventEmitter,
+  MessageClientEvents
+>
+
+export default class MessageClient extends (EventEmitter as {
+  new (): MessageClientEmitter
+}) {
+  private running = false
   private readonly options: MessageClientOptions
   private readonly binary: boolean
 
@@ -35,22 +49,16 @@ export default class MessageClient extends MessageHandlerCommon {
   private reconnectTimeout: ReturnType<typeof setTimeout> | undefined
   private socket: net.Socket | undefined
 
-  private waitForConnectionPromise: Promise<void> | undefined
-  private waitForConnectionResolve: ResolveConnectCallback | undefined
-  private waitForConnectionReject: RejectConnectCallback | undefined
-
   constructor(options: MessageClientOptions = {}) {
     super()
     validateMessageHandlerOptions(options)
     this.options = options
     this.binary = Boolean(options.binary)
-    this.initWaitForConnectionPromise()
   }
 
   async start(): Promise<void> {
     if (!this.running) {
       this.running = true
-      if (!this.waitForConnectionPromise) this.initWaitForConnectionPromise()
       this.connect()
     }
     await this.waitForConnection()
@@ -59,7 +67,10 @@ export default class MessageClient extends MessageHandlerCommon {
   stop(): void {
     if (this.running) {
       this.running = false
-      this.cleanUp('client was stopped before connecting')
+      if (!this.connection) {
+        this.emit('error', new Error('stopped before connection completed'))
+      }
+      this.cleanUp()
     }
   }
 
@@ -67,24 +78,10 @@ export default class MessageClient extends MessageHandlerCommon {
     return Boolean(this.connection)
   }
 
-  waitForConnection(): Promise<void> {
-    return this.waitForConnectionPromise
-      ? this.waitForConnectionPromise
-      : Promise.reject(
-          Error(this.running ? 'connection failed' : 'client is stopped')
-        )
-  }
-
-  private initWaitForConnectionPromise(): void {
-    this.waitForConnectionPromise = pTimeout(
-      new Promise(
-        (resolve: ResolveConnectCallback, reject: RejectConnectCallback) => {
-          this.waitForConnectionResolve = resolve
-          this.waitForConnectionReject = reject
-        }
-      ),
-      10000
-    )
+  async waitForConnection(): Promise<void> {
+    if (!this.running) throw new Error('client is stopped')
+    if (this.isConnected()) return
+    await pTimeout(emitted(this, 'connection'), 10000)
   }
 
   /**
@@ -101,9 +98,12 @@ export default class MessageClient extends MessageHandlerCommon {
       if (!this.socket) {
         const onConnectError = (err: Error & { code: string }): void => {
           if (err && 'ENOENT' !== err.code && 'ECONNREFUSED' !== err.code) {
-            this.onError(new VError(err, 'MessageClient got socket error'))
+            this.emit(
+              'error',
+              new VError(err, 'MessageClient got socket error')
+            )
           }
-          this.cleanUp('error while attempting to connect')
+          this.cleanUp()
         }
         const { path, host, port } = this.options
         const connectOptions: NetConnectOpts = (path
@@ -117,10 +117,11 @@ export default class MessageClient extends MessageHandlerCommon {
               { binary: this.binary }
             ))
             connection.on('message', (event: MessageEvent) =>
-              this.onMessage(event, connection)
+              this.emit('message', event, connection)
             )
             connection.on('error', (err: Error) =>
-              this.onError(
+              this.emit(
+                'error',
                 new VError(
                   err,
                   'MessageClient got error from MessageConnection'
@@ -128,14 +129,11 @@ export default class MessageClient extends MessageHandlerCommon {
               )
             )
             connection.on('close', () => {
-              this.onClose(connection)
-              this.cleanUp('connection was closed by server')
+              this.emit('close', connection)
+              this.cleanUp()
             })
 
             this.emit('connection', connection)
-            if (this.waitForConnectionResolve) this.waitForConnectionResolve()
-            this.waitForConnectionResolve = undefined
-            this.waitForConnectionReject = undefined
           }
         }))
         socket.on('error', onConnectError)
@@ -143,7 +141,7 @@ export default class MessageClient extends MessageHandlerCommon {
     }
   }
 
-  private cleanUp(reason: string): void {
+  private cleanUp(): void {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout)
       this.reconnectTimeout = undefined
@@ -152,14 +150,6 @@ export default class MessageClient extends MessageHandlerCommon {
       this.connection.close()
       this.connection = undefined
     }
-
-    // notify anyone waiting on the connect promise
-    if (this.waitForConnectionReject) {
-      this.waitForConnectionReject(Error(reason))
-      this.waitForConnectionReject = undefined
-      this.waitForConnectionResolve = undefined
-    }
-    this.waitForConnectionPromise = undefined
 
     if (this.running && !this.reconnectTimeout && !this.options.oneShot) {
       // schedule reconnect
