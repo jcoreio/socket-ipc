@@ -81,7 +81,15 @@ export default class MessageClient extends (EventEmitter as {
   async waitForConnection(): Promise<void> {
     if (!this.running) throw new Error('client is stopped')
     if (this.isConnected()) return
-    await pTimeout(emitted(this, 'connection'), 10000)
+    const { host, port, path } = this.options
+    const connectionDescr = port
+      ? `TCP connection to ${host || 'localhost'}:${port}`
+      : `UNIX socket connection to ${path || ''}`
+    await pTimeout(
+      emitted(this, 'connection'),
+      10000,
+      `timed out waiting for socket IPC ${connectionDescr}`
+    )
   }
 
   /**
