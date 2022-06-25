@@ -127,7 +127,8 @@ export default class MessageClient extends (EventEmitter as {
             connection.on('message', (event: MessageEvent) =>
               this.emit('message', event, connection)
             )
-            connection.on('error', (err: Error) =>
+            connection.on('error', (err: Error) => {
+              this.cleanUp()
               this.emit(
                 'error',
                 new VError(
@@ -135,7 +136,7 @@ export default class MessageClient extends (EventEmitter as {
                   'MessageClient got error from MessageConnection'
                 )
               )
-            )
+            })
             connection.on('close', () => {
               this.emit('close', connection)
               this.cleanUp()
@@ -150,6 +151,7 @@ export default class MessageClient extends (EventEmitter as {
   }
 
   private cleanUp(): void {
+    this.socket = undefined
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout)
       this.reconnectTimeout = undefined
