@@ -11,7 +11,7 @@ import {
 import EventEmitter from 'events'
 import { StrictEventEmitter } from 'strict-event-emitter-types'
 
-const RECONNECT_WAIT = 1000 // 1 second
+const RECONNECT_WAIT = 2000 // 2 seconds
 
 import net, { NetConnectOpts } from 'net'
 
